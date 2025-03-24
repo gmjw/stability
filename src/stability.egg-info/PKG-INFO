@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: stability
+Version: 0.0.2
+Summary: A small example package
+Author-email: Gareth Williams <gwilliams@example.com>
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+# Stability
+
+This is a simple example package. You can use
+[GitHub-flavored Markdown](https://guides.github.com/features/mastering-markdown/)
+to write your content.
