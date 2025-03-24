@@ -2,9 +2,9 @@
 name = "stability"
 version = "0.0.2"
 authors = [
-  { name="Gareth Williams", email="gwilliams@example.com" },
+  { name="Gareth Williams", email="gareth.williams.pypi@gmail.com" },
 ]
-description = "A small example package"
+description = "A package for managing stability tests"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
