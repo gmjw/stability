@@ -10,7 +10,7 @@ import pandas as pd
 from inspect import isgeneratorfunction
 
 
-WRITE_DATA = bool(environ.get('STABILITY_WRITE_DATA', True))
+WRITE_DATA = bool(environ.get('STABILITY_WRITE_DATA'))
 
 
 def stability_test(
@@ -45,9 +45,21 @@ def get_wrapped_func(
 
         if isgeneratorfunction(func):
             for i, yielded in enumerate(out):
-                assert_output_equals_expected(yielded, func, write, test_case=i)
+                assert_output_equals_expected(
+                    yielded,
+                    func,
+                    write,
+                    test_case=i,
+                    **dec_kwargs,
+                )
         else:
-            assert_output_equals_expected(out, func, write, test_case=test_case)
+            assert_output_equals_expected(
+                out,
+                func,
+                write,
+                test_case=test_case,
+                **dec_kwargs,
+            )
 
     return wrapped
 
@@ -57,6 +69,7 @@ def assert_output_equals_expected(
     func: Callable,
     write: bool,
     test_case: int | str,
+    **dec_kwargs,
 ):
     run_output_checks(out)
     out = convert_dtypes(out)
@@ -67,7 +80,7 @@ def assert_output_equals_expected(
         out.to_csv(filepath, index=False)
 
     expec = pd.read_csv(filepath)
-    pd.testing.assert_frame_equal(out, expec)
+    pd.testing.assert_frame_equal(out, expec, **dec_kwargs)
 
 
 def run_output_checks(out):

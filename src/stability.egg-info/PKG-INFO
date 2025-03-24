@@ -1,8 +1,8 @@
 Metadata-Version: 2.4
 Name: stability
 Version: 0.0.2
-Summary: A small example package
-Author-email: Gareth Williams <gwilliams@example.com>
+Summary: A package for managing stability tests
+Author-email: Gareth Williams <gareth.williams.pypi@gmail.com>
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: OS Independent
 Classifier: License :: OSI Approved :: MIT License
@@ -13,6 +13,5 @@ Dynamic: license-file
 
 # Stability
 
-This is a simple example package. You can use
-[GitHub-flavored Markdown](https://guides.github.com/features/mastering-markdown/)
-to write your content.
+This package provides the `stability_test` decorator, which
+can be used to easily manage stability tests.
