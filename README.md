@@ -48,7 +48,7 @@ A few notes:
 
 ### How does the library know what the expected values are?
 
-The first time you create a stability test with the `@stability_test`
+The first time you create a stability test with `@stability_test`
 you simply pass in `write=True`.
 
 ```python
