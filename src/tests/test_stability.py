@@ -1,12 +1,17 @@
+import os
+
 import pandas as pd
 from pytest import fixture, mark
 
-from stability.decorators import stability_test
 
+from src.stability.decorators import stability_test
 
 @fixture
 def my_fixture():
-    return pd.DataFrame({'col': [10, 20, 30]})
+    multiplier = 3
+    df = pd.DataFrame({'col': [10, 20, 30]})
+    out = multiplier * df
+    return out
 
 
 @stability_test

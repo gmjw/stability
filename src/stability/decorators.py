@@ -1,3 +1,4 @@
+import os
 from functools import wraps
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from typing import Callable, Any
 
 import pandas as pd
 
-from inspect import isgeneratorfunction
+from inspect import isgeneratorfunction, getfile
 
 
 WRITE_DATA = bool(environ.get('STABILITY_WRITE_DATA'))
@@ -119,17 +120,17 @@ def convert_dtypes(df):
 
 
 def get_expected_csv_filepath(func, test_case=None):
-    test_module = func.__module__
-    test_file = test_module.split('.')[-1]
+    test_filepath = getfile(func)
+    test_filename = test_filepath.split(os.sep)[-1].split('.')[0]
 
-    folder = full_path(test_module) / 'resources'
+    folder = full_path(test_filepath) / 'resources'
     if not exists(folder):
         mkdir(folder)
 
     test_name = func.__name__
 
     suffix = "" if test_case is None else f"_{test_case}"
-    csv_filename = f"{test_file}_{test_name}{suffix}.csv"
+    csv_filename = f"{test_filename}_{test_name}{suffix}.csv"
 
     csv_filepath = folder / csv_filename
     return csv_filepath
