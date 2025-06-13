@@ -46,6 +46,7 @@ A few notes:
 - the test now simply returns the output to be checked
 - the `@stability_test` decorator takes care of checking the output vs the expected values 
 
+
 ### How does the library know what the expected values are?
 
 The first time you create a stability test with `@stability_test`
@@ -70,18 +71,17 @@ of the test is then stored in a clean human-readable format. Any future
 changes in the output of the function will be clearly visible in the 
 diff on the CSV file. And it only takes adding `write=True` and 
 re-running the test to upate the values in the CSV - no adding
-print statements, copying and pasting.
+print statements, no copying or pasting.
 
 NOTE: Remember to _remove_ `write=True` once the CSV file has been
-written or updated - otherwise your unit tests are not running as 
-intended - they will be constantly re-saving new data when they run
-rather than comparing against the intended expected values.
+written or updated - this is enforced by the test raising an error
+a `RememberError`) once it has written new values to disk.
+
 
 ### Checking multiple outputs in the same test
 
 The decorator can also be used to check values which are 
 yielded from a test set up as a generator function. For example:
-
 
 ```python
 @stability_test
@@ -103,10 +103,11 @@ The decorator is most useful when updating multiple expected values
 variable
 
 ```commandline
-STABILITY_WRITE_DATA=1
+STABILITY_WRITE_DATA=1  # any True-like string is fine
 ```
 
 Then run any tests for which you want to update expected values. 
 The decorator will take care of the rest - all expected output CSVs
 will be updated. You just need to add/commit the changed CSV files 
-to git or whichever VCS you are using.
+to git or whichever VCS you are using (and remember to un-set the
+environment variable when you're done).

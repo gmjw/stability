@@ -76,6 +76,33 @@ def test_expected_decorator_parametrized(test_case, df):
     test_expected_decorator_parametrized_inner()
 
 
+@mark.parametrize(
+    ['df'],
+    [
+        (
+                pd.DataFrame({
+                    'str_col': ['a', 'b'],
+                    'int_col': [1, 2],
+                }),
+        ),
+        (
+                pd.DataFrame({
+                    'float_col': [3.14159, -1],
+                }),
+        ),
+    ],
+    ids=['case0', 'case1']
+)
+def test_expected_decorator_parametrized_with_ids(df, request):
+
+    @stability_test(test_case=request.node.callspec.id)
+    def test_expected_decorator_parametrized_with_ids_inner():
+        return df
+
+    test_expected_decorator_parametrized_with_ids_inner()
+
+
+
 @mark.xfail  # output is not a dataframe
 @stability_test
 def test_expected_decorator_output_not_a_dataframe():

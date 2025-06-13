@@ -14,6 +14,10 @@ from inspect import isgeneratorfunction, getfile
 WRITE_DATA = bool(environ.get('STABILITY_WRITE_DATA'))
 
 
+class RememberError(Exception):
+    pass
+
+
 def stability_test(
     func=None,
     write: bool = False,
@@ -40,6 +44,8 @@ def get_wrapped_func(
     test_case=None,
     **dec_kwargs,
 ):
+    write = write or WRITE_DATA
+
     @wraps(func)
     def wrapped(*func_args, **func_kwargs):
         out = func(*func_args, **func_kwargs)
@@ -62,6 +68,13 @@ def get_wrapped_func(
                 **dec_kwargs,
             )
 
+        if write:
+            reminder = (
+                'Everything is fine, this error is just here to remind you to '
+                'switch off `write=True` before committing your changes.'
+            )
+            raise RememberError(reminder)
+
     return wrapped
 
 
@@ -77,7 +90,7 @@ def assert_output_equals_expected(
 
     filepath = get_expected_csv_filepath(func, test_case)
 
-    if WRITE_DATA or write:
+    if write:
         out.to_csv(filepath, index=False)
 
     expec = pd.read_csv(filepath)
@@ -138,6 +151,3 @@ def get_expected_csv_filepath(func, test_case=None):
 
 def full_path(file: str) -> Path:
     return Path(dirname(realpath(file)))
-
-
-
