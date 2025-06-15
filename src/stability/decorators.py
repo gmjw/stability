@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from functools import wraps
 from pathlib import Path
 
@@ -14,6 +15,84 @@ from inspect import isgeneratorfunction, getfile
 WRITE_DATA = bool(environ.get('STABILITY_WRITE_DATA'))
 
 
+def convert_datetime_columns_to_strings(df):
+    """
+    When using CSV or JSON filetypes, we must convert
+    datetime columns to strings.
+    This is because:
+    - for CSVs, reading from disk and knowing which columns
+      are datetime columns is awkward.
+    - timestamps are not JSON-serializable.
+
+    This means that the decorator cannot pick up on cases
+    where the dtype of one of the columns being checked has
+    changed from datetime64 to str, but this is likely to be
+    very rare, and the user has been warned about this in the
+    README.  # TODO: Mention this!
+    """
+    dtypes = ["datetime64", "datetimetz"]
+    datetime_df = df.select_dtypes(dtypes)
+    datetime_cols = list(datetime_df.columns)
+
+    if datetime_cols:
+        # TODO: Log what's happening here so users have some visibility
+        df = df.astype({c: str for c in datetime_cols})
+
+    return df
+
+
+class CsvFileHandler:
+    @staticmethod
+    def write_to_disk(df, filepath):
+        df.to_csv(filepath, index=False)
+
+    @staticmethod
+    def load_from_disk(filepath):
+        return pd.read_csv(filepath)
+
+    @staticmethod
+    def convert(df):
+        return convert_datetime_columns_to_strings(df)
+
+
+class ParquetFileHandler:
+    @staticmethod
+    def write_to_disk(df, filepath):
+        df.to_parquet(filepath)
+
+    @staticmethod
+    def load_from_disk(filepath):
+        return pd.read_parquet(filepath)
+
+    @staticmethod
+    def convert(df):
+        return df  # No conversions necessary
+
+
+
+class JsonFileHandler:
+    @staticmethod
+    def write_to_disk(df, filepath):
+        df.to_json(filepath, orient='records', indent=2)
+
+    @staticmethod
+    def load_from_disk(filepath):
+        return pd.read_json(filepath, orient='records')
+
+    @staticmethod
+    def convert(df):
+        return convert_datetime_columns_to_strings(df)
+
+
+
+class FileHandlers(Enum):
+    csv = CsvFileHandler()
+    parquet = ParquetFileHandler()
+    pq = ParquetFileHandler()
+    json = JsonFileHandler()
+    js = JsonFileHandler()
+
+
 class RememberError(Exception):
     pass
 
@@ -21,6 +100,7 @@ class RememberError(Exception):
 def stability_test(
     func=None,
     write: bool = False,
+    filetype: str = 'csv',
     test_case: str = None,
     **kwargs,
 ):
@@ -28,19 +108,20 @@ def stability_test(
         # Has been called "directly":
         #   @stability_test
         #   def test_...():
-        return get_wrapped_func(func, write, test_case, **kwargs)
+        return get_wrapped_func(func, write, filetype, test_case, **kwargs)
     else:
         # Has been called with arguments:
         #   @stability_test(test_case=...)
         #   def test_...():
         def dec(f):
-            return get_wrapped_func(f, write, test_case, **kwargs)
+            return get_wrapped_func(f, write, filetype, test_case, **kwargs)
         return dec
 
 
 def get_wrapped_func(
     func: Callable,
     write: bool = False,
+    filetype: str = 'csv',
     test_case=None,
     **dec_kwargs,
 ):
@@ -56,6 +137,7 @@ def get_wrapped_func(
                     yielded,
                     func,
                     write,
+                    filetype,
                     test_case=i,
                     **dec_kwargs,
                 )
@@ -64,6 +146,7 @@ def get_wrapped_func(
                 out,
                 func,
                 write,
+                filetype,
                 test_case=test_case,
                 **dec_kwargs,
             )
@@ -82,19 +165,23 @@ def assert_output_equals_expected(
     out: pd.DataFrame,
     func: Callable,
     write: bool,
+    filetype: str,
     test_case: int | str,
     **dec_kwargs,
 ):
     run_output_checks(out)
-    out = convert_dtypes(out)
 
-    filepath = get_expected_csv_filepath(func, test_case)
+    assert filetype in FileHandlers.__members__, f"{filetype=} is not a valid filetype"
+    handler = FileHandlers[filetype].value
+    out = handler.convert(out)
+
+    filepath = get_expected_csv_filepath(func, filetype, test_case)
 
     if write:
-        out.to_csv(filepath, index=False)
+        handler.write_to_disk(out, filepath)
 
-    expec = pd.read_csv(filepath)
-    pd.testing.assert_frame_equal(out, expec, **dec_kwargs)
+    expected = handler.load_from_disk(filepath)
+    pd.testing.assert_frame_equal(out, expected, **dec_kwargs)
 
 
 def run_output_checks(out):
@@ -121,18 +208,15 @@ def convert_dtypes(df):
     datetime64 to str, but the user has been warned
     about this in the README.
     """
-    df = df.copy()
-
     dtypes = ["datetime64", "datetimetz"]
     datetime_df = df.select_dtypes(dtypes)
     date_columns = datetime_df.columns
 
-    df[date_columns] = datetime_df.astype(str)
+    out = df.astype({c: str for c in date_columns})
+    return out
 
-    return df
 
-
-def get_expected_csv_filepath(func, test_case=None):
+def get_expected_csv_filepath(func, filetype: str, test_case=None):
     test_filepath = getfile(func)
     test_filename = test_filepath.split(os.sep)[-1].split('.')[0]
 
@@ -143,10 +227,10 @@ def get_expected_csv_filepath(func, test_case=None):
     test_name = func.__name__
 
     suffix = "" if test_case is None else f"_{test_case}"
-    csv_filename = f"{test_filename}_{test_name}{suffix}.csv"
+    filename = f"{test_filename}_{test_name}{suffix}.{filetype}"
 
-    csv_filepath = folder / csv_filename
-    return csv_filepath
+    filepath = folder / filename
+    return filepath
 
 
 def full_path(file: str) -> Path:

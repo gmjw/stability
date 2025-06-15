@@ -1,0 +1,16 @@
+[
+  {
+    "str_col":"a",
+    "int_col":1,
+    "float_col":3.14159,
+    "datetime_col":"2000-01-01 00:00:00",
+    "datetime_col2":"2000-01-01 00:00:00+00:00"
+  },
+  {
+    "str_col":"b",
+    "int_col":2,
+    "float_col":-1.0,
+    "datetime_col":"2001-01-01 12:34:56",
+    "datetime_col2":"2001-01-01 12:34:56+00:00"
+  }
+]
