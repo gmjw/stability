@@ -105,3 +105,10 @@ def test_decorator_output_index_invalid():
     return pd.DataFrame({
         'float_col': [3.14159, -1],
     }, index=['a', 'b'])
+
+
+@stability_test(filetype='pq')
+def test_decorator_non_range_index_fine_when_using_parquet():
+    return pd.DataFrame({
+        'float_col': [3.14159, -1],
+    }, index=['a', 'b'])

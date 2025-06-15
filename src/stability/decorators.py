@@ -41,6 +41,23 @@ def convert_datetime_columns_to_strings(df):
     return df
 
 
+def check_output_is_dataframe(out):
+    error = (
+        "Only dataframes can be used with the `stability_test` decorator, "
+        f"found output of type {type(out)}."
+    )
+    assert isinstance(out, pd.DataFrame), error
+
+
+def check_output_has_range_index(out):
+    error = (
+        "Dataframes for use with the `stability_test` decorator should "
+        f"always have a 0...n-1 range index, found {out.index}."
+    )
+    valid_index = pd.RangeIndex(len(out))
+    assert out.index.equals(valid_index), error
+
+
 class CsvFileHandler:
     @staticmethod
     def write_to_disk(df, filepath):
@@ -49,6 +66,13 @@ class CsvFileHandler:
     @staticmethod
     def load_from_disk(filepath):
         return pd.read_csv(filepath)
+
+    @staticmethod
+    def check(out):
+        # For simplicity, we ignore the index when saving
+        # to CSV, so we can't handle dataframes with any
+        # index apart from a RangeIndex.
+        check_output_has_range_index(out)
 
     @staticmethod
     def convert(df):
@@ -65,6 +89,10 @@ class ParquetFileHandler:
         return pd.read_parquet(filepath)
 
     @staticmethod
+    def check(out):
+        pass  # no checks necessary
+
+    @staticmethod
     def convert(df):
         return df  # No conversions necessary
 
@@ -78,6 +106,12 @@ class JsonFileHandler:
     @staticmethod
     def load_from_disk(filepath):
         return pd.read_json(filepath, orient='records')
+
+    @staticmethod
+    def check(out):
+        # As for CSV files, indexes are ignored when saving
+        # to or loading from JSON.
+        check_output_has_range_index(out)
 
     @staticmethod
     def convert(df):
@@ -120,8 +154,8 @@ def stability_test(
 
 def get_wrapped_func(
     func: Callable,
-    write: bool = False,
-    filetype: str = 'csv',
+    write: bool,
+    filetype: str,
     test_case=None,
     **dec_kwargs,
 ):
@@ -169,13 +203,14 @@ def assert_output_equals_expected(
     test_case: int | str,
     **dec_kwargs,
 ):
-    run_output_checks(out)
+    check_output_is_dataframe(out)
 
     assert filetype in FileHandlers.__members__, f"{filetype=} is not a valid filetype"
     handler = FileHandlers[filetype].value
+    handler.check(out)
     out = handler.convert(out)
 
-    filepath = get_expected_csv_filepath(func, filetype, test_case)
+    filepath = get_resource_filepath(func, filetype, test_case)
 
     if write:
         handler.write_to_disk(out, filepath)
@@ -184,39 +219,7 @@ def assert_output_equals_expected(
     pd.testing.assert_frame_equal(out, expected, **dec_kwargs)
 
 
-def run_output_checks(out):
-    error = (
-        "Only dataframes can be used with the `stability_test` decorator, "
-        f"found output of type {type(out)}."
-    )
-    assert isinstance(out, pd.DataFrame), error
-
-    error = (
-        "Dataframes for use with the `stability_test` decorator should "
-        f"always have a 0...n-1 range index, found {out.index}."
-    )
-    valid_index = pd.RangeIndex(len(out))
-    assert out.index.equals(valid_index), error
-
-
-def convert_dtypes(df):
-    """
-    Because we will compare to the output of a CSV file,
-    we convert timestamps to strings. This means that the
-    decorator cannot pick up on cases where the dtype of
-    one of the columns being checked has changed from
-    datetime64 to str, but the user has been warned
-    about this in the README.
-    """
-    dtypes = ["datetime64", "datetimetz"]
-    datetime_df = df.select_dtypes(dtypes)
-    date_columns = datetime_df.columns
-
-    out = df.astype({c: str for c in date_columns})
-    return out
-
-
-def get_expected_csv_filepath(func, filetype: str, test_case=None):
+def get_resource_filepath(func, filetype: str, test_case=None):
     test_filepath = getfile(func)
     test_filename = test_filepath.split(os.sep)[-1].split('.')[0]
 
